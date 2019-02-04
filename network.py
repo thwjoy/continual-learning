@@ -6,6 +6,7 @@ from tensorboard_logger import configure, log_value, log_images
 import os
 import sys
 import math
+import numpy as np
 from torch_utils import dataset as ds
 from torch_utils import torch_io as tio
 
@@ -96,3 +97,44 @@ def train(args):
         # save model
         tio.save_model(epoch=epoch, model=net, optimizer=optimizer, path=run_name + '/ckpt')
         epoch = epoch + 1
+
+
+def test(args):
+
+    # tensorboard
+    run_name = "./runs/run-classifier_batch_" + str(args.batch_size) \
+                    + "_epochs_" + str(args.epochs) + "_" + args.log_message
+    configure(run_name)
+
+    net = Net()
+
+    mnistmTestSet = ds.mnistmTrainingDataset(
+                        text_file=args.dataset_list)
+
+    mnistmTestLoader = torch.utils.data.DataLoader(
+                                            mnistmTestSet,
+                                            batch_size=args.batch_size,
+                                            shuffle=True, num_workers=2)
+    # put on gpu if available
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    net.to(device)
+ 
+    # load prev model
+    tio.load_test_model(model=net, path=run_name + '/ckpt')
+
+    acc = 0.0
+    
+    for i, sample_batched in enumerate(mnistmTestLoader, 0):
+        input_batch = f.pad(sample_batched['image'].float(), (2, 2, 2, 2))
+        input_batch = input_batch.to(device)
+        labels = sample_batched['labels']
+
+        output = net(input_batch)
+
+        # print statistics
+        correct = (np.argmax(output.cpu().detach().numpy()) == labels)
+        acc = acc + correct.float().mean()
+
+    print( 1 - acc / len(mnistmTestLoader))
+        

@@ -18,3 +18,10 @@ def load_model(model, epoch,
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch[0] = checkpoint['epoch'] + 1
     return
+
+def load_test_model(model, path):
+    if os.path.exists(path):
+        checkpoint = torch.load(path)
+        model.load_state_dict(checkpoint['model_state_dict'])
+    return
+
