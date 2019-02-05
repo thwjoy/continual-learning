@@ -18,8 +18,9 @@ def main():
                         help='Path to csv containing the dataset and labels')
     parser.add_argument('--log_message', required=False, default='',
                         help='A simple message to help debugging')
+    parser.add_argument('--ckpt', required=False,
+                        help='Patch model weights, only required for testing')
     args = parser.parse_args()
-
 
     if args.test:
         network.test(args)

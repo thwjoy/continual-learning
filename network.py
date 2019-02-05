@@ -2,13 +2,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as f
 import torch.optim as optim
+import torchvision
 from tensorboard_logger import configure, log_value, log_images
 import os
 import sys
 import math
-import numpy as np
 from torch_utils import dataset as ds
 from torch_utils import torch_io as tio
+import matplotlib.pyplot as plt
 
 class Net(nn.Module):
 
@@ -21,22 +22,16 @@ class Net(nn.Module):
         self.fc1 = nn.Linear(16 * 5 * 5, 120)
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 10)
+        self.pool2d = nn.MaxPool2d(2)
 
     def forward(self, x):
-        x = f.max_pool2d(f.relu(self.conv1(x)), 2)
-        x = f.max_pool2d(f.relu(self.conv2(x)), 2)
-        x = x.view(-1, self.num_flat_features(x))
+        x = self.pool2d(f.relu(self.conv1(x)))
+        x = self.pool2d(f.relu(self.conv2(x)))
+        x = x.view(x.size(0), -1)
         x = f.relu(self.fc1(x))
         x = f.relu(self.fc2(x))
         x = self.fc3(x)
         return x
-
-    def num_flat_features(self, x):
-        size = x.size()[1:]  # all dimensions except the batch dimension
-        num_features = 1
-        for s in size:
-            num_features *= s
-        return num_features
 
 
 def train(args):
@@ -101,11 +96,6 @@ def train(args):
 
 def test(args):
 
-    # tensorboard
-    run_name = "./runs/run-classifier_batch_" + str(args.batch_size) \
-                    + "_epochs_" + str(args.epochs) + "_" + args.log_message
-    configure(run_name)
-
     net = Net()
 
     mnistmTestSet = ds.mnistmTrainingDataset(
@@ -121,20 +111,19 @@ def test(args):
     net.to(device)
  
     # load prev model
-    tio.load_test_model(model=net, path=run_name + '/ckpt')
+    tio.load_test_model(model=net, path=args.ckpt)
 
-    acc = 0.0
+    correct = torch.ByteTensor().to(device)
     
     for i, sample_batched in enumerate(mnistmTestLoader, 0):
-        input_batch = f.pad(sample_batched['image'].float(), (2, 2, 2, 2))
+        input_batch = f.pad(sample_batched['image'].float(), (2, 2, 2, 2), mode='constant', value=0)
         input_batch = input_batch.to(device)
         labels = sample_batched['labels']
 
         output = net(input_batch)
 
-        # print statistics
-        correct = (np.argmax(output.cpu().detach().numpy()) == labels)
-        acc = acc + correct.float().mean()
+        batch_correct = (torch.argmax(output, dim=1) == labels.to(device))
+        correct = torch.cat((correct, batch_correct))
 
-    print( 1 - acc / len(mnistmTestLoader))
+    print(correct.float().mean())
         
