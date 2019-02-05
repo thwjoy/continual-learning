@@ -13,8 +13,8 @@ class mnistmTrainingDataset(torch.utils.data.Dataset):
         Args:
             text_file(string): path to text file
         """
-        self.name_frame = pd.read_csv(text_file, sep=",", usecols=range(1))
-        self.label_frame = pd.read_csv(text_file, sep=",", usecols=range(1, 2))
+        self.name_frame = pd.read_csv(text_file, sep=",", usecols=range(1), header=None)
+        self.label_frame = pd.read_csv(text_file, sep=",", usecols=range(1, 2), header=None)
 
     def __len__(self):
         return len(self.name_frame)

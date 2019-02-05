@@ -3,13 +3,14 @@ import torch.nn as nn
 import torch.nn.functional as f
 import torch.optim as optim
 import torchvision
-from tensorboard_logger import configure, log_value, log_images
+from tensorboard_logger import log_value, log_images
 import os
 import sys
 import math
 from torch_utils import dataset as ds
 from torch_utils import torch_io as tio
 import matplotlib.pyplot as plt
+
 
 class Net(nn.Module):
 
@@ -39,7 +40,6 @@ def train(args):
     # tensorboard
     run_name = "./runs/run-classifier_batch_" + str(args.batch_size) \
                     + "_epochs_" + str(args.epochs) + "_" + args.log_message
-    configure(run_name)
 
     net = Net()
 
@@ -93,8 +93,14 @@ def train(args):
         tio.save_model(epoch=epoch, model=net, optimizer=optimizer, path=run_name + '/ckpt')
         epoch = epoch + 1
 
-
 def test(args):
+
+
+    if not args.ckpt:
+        ckpt = "./runs/run-classifier_batch_" + str(args.batch_size) \
+                    + "_epochs_" + str(args.epochs) + "_" + args.log_message + '/ckpt'
+    else:
+        ckpt = args.ckpt
 
     net = Net()
 
@@ -111,7 +117,7 @@ def test(args):
     net.to(device)
  
     # load prev model
-    tio.load_test_model(model=net, path=args.ckpt)
+    tio.load_test_model(model=net, path=ckpt)
 
     correct = torch.ByteTensor().to(device)
     
