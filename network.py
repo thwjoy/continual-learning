@@ -41,6 +41,8 @@ def train(args):
     run_name = "./runs/run-classifier_batch_" + str(args.batch_size) \
                     + "_epochs_" + str(args.epochs) + "_" + args.log_message
 
+    print('######### Run Name: %s ##########' %(run_name))
+
     net = Net()
 
     mnistmTrainSet = ds.mnistmTrainingDataset(
@@ -63,7 +65,8 @@ def train(args):
 
     # load prev model
     tio.load_model(model=net, optimizer=optimizer, epoch=epoch, path=run_name + '/ckpt')
-    epoch = epoch[0]
+    epoch = 0
+    print('######### Loaded ckpt: %s ##########' %(run_name))
 
     while epoch < args.epochs:
 
@@ -104,8 +107,8 @@ def test(args):
 
     net = Net()
 
-    mnistmTestSet = ds.mnistmTrainingDataset(
-                        text_file=args.dataset_list)
+    mnistmTestSet = ds.mnistTestingDataset(
+                        task_list=args.evaluate_list)
 
     mnistmTestLoader = torch.utils.data.DataLoader(
                                             mnistmTestSet,
@@ -131,5 +134,29 @@ def test(args):
         batch_correct = (torch.argmax(output, dim=1) == labels.to(device))
         correct = torch.cat((correct, batch_correct))
 
-    print(correct.float().mean())
+    print('Accuracy on ALL tasks %f' %(correct.float().mean().item()))
+
+    ##### Show accuracy on only this task
+    mnistmTestSet = ds.mnistmTrainingDataset(
+                        text_file=args.evaluate_list[-1])
+
+    mnistmTestLoader = torch.utils.data.DataLoader(
+                                            mnistmTestSet,
+                                            batch_size=args.batch_size,
+                                            shuffle=True, num_workers=2)
+
+    correct = torch.ByteTensor().to(device)
+    
+    for i, sample_batched in enumerate(mnistmTestLoader, 0):
+        input_batch = f.pad(sample_batched['image'].float(), (2, 2, 2, 2), mode='constant', value=0)
+        input_batch = input_batch.to(device)
+        labels = sample_batched['labels']
+
+        output = net(input_batch)
+
+        batch_correct = (torch.argmax(output, dim=1) == labels.to(device))
+        correct = torch.cat((correct, batch_correct))
+
+
+    print('Accuracy on THIS tasks %f' %(correct.float().mean().item()))
         
