@@ -21,7 +21,10 @@ def train(args):
 
     print('######### Run Name: %s ##########' %(run_name))
 
-    net = model.Net()
+    # net = model.Net()
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    mod = model.Model(model_location=run_name + '/ckpt', device=device)
 
     mnistmTrainSet = ds.mnistmTrainingDataset(
                         text_file=args.dataset_list)
@@ -31,48 +34,30 @@ def train(args):
                                             batch_size=args.batch_size,
                                             shuffle=True, num_workers=2)
 
-    loss_fn = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+    mod.epoch = 0
 
-    # put on gpu if available
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-    net.to(device)
-
-    epoch = [0]
-
-    # load prev model
-    tio.load_model(model=net, optimizer=optimizer, epoch=epoch, path=run_name + '/ckpt')
-    epoch = 0
     print('######### Loaded ckpt: %s ##########' %(run_name))
 
-    while epoch < args.epochs:
+    while mod.epoch < args.epochs:
 
         for i, sample_batched in enumerate(mnistmTrainLoader, 0):
-            input_batch = f.pad(sample_batched['image'].float(), (2, 2, 2, 2))
-            input_batch = input_batch.to(device)
-
-            optimizer.zero_grad()
-
-            output = net(input_batch)
-            loss = loss_fn(output, sample_batched['labels'].to(device))
-            loss.backward()
-            optimizer.step()
+            
+            mod.train_batch(sample_batched)
 
             # print statistics
             if i % 50 == 0:
-                count = int(epoch * math.floor(len(mnistmTrainSet) / (args.batch_size * 200)) + (i / 200))
+                count = int(mod.epoch * math.floor(len(mnistmTrainSet) / (args.batch_size * 200)) + (i / 200))
                 print('[%d, %5d] loss: %.3f' %
-                    (epoch + 1, i + 1, loss.item()))
-                log_value('loss', loss.item(), count)
-                _, ind = output.max(1)
+                    (mod.epoch + 1, i + 1, mod.loss.item()))
+                log_value('loss', mod.loss.item(), count)
+                _, ind = mod.output.max(1)
                 name = 'pred_' + str(ind[0])
                 sample_image = sample_batched['image'][0]
                 log_images(name, sample_image, count)
 
-        # save model
-        tio.save_model(epoch=epoch, model=net, optimizer=optimizer, path=run_name + '/ckpt')
-        epoch = epoch + 1
+        # # save model
+        mod.save_model(model_location=run_name + '/ckpt')
+        mod.epoch = mod.epoch + 1
 
 def test(args):
 
