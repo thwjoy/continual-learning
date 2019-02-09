@@ -29,10 +29,27 @@ class Net(nn.Module):
         return x
 
 
+def get_second_order_grad(grads, xs):
+    grads2 = []
+    for j, (grad, x) in enumerate(zip(grads, xs)):
+        print('2nd order on ', j, 'th layer')
+        print(x.size())
+        grad = torch.reshape(grad, [-1])
+        grads2_tmp = []
+        for count, g in enumerate(grad):
+            g2 = torch.autograd.grad(g, x, retain_graph=True)[0]
+            g2 = torch.reshape(g2, [-1])
+            grads2_tmp.append(g2[count].data.cpu().numpy())
+        grads2.append(torch.from_numpy(np.reshape(grads2_tmp, x.size())).to(DEVICE_IDS[0]))
+    for grad in grads2:  # check size
+        print(grad.size())
+
+    return grads2
+
 
 class Model():
 
-    def __init__(self, model_location, device):
+    def __init__(self, model_location, device, monte_carlo_sample_size=200):
         self.model_location = model_location
         self.net = Net()
         self.device = device
@@ -43,6 +60,24 @@ class Model():
         tio.load_model(model=self.net, optimizer=self.optimizer, epoch=epoch, path=model_location)
         self.epoch = epoch[0]
         
+    def update_fisher(self, input_batch):
+        # we need to sample some examples and then perform softmax over them, 
+        # we use this to get the current probability distribution
+        input_batch = f.pad(input_batch.float(), (2, 2, 2, 2))
+        input_batch = input_batch.to(self.device)
+        outputs = self.net(input_batch)
+        
+        # then compute the second gradient of the log
+        log_softmax = torch.nn.functional.log_softmax(outputs, 1)
+
+        # get gradients wrt parameters
+        
+
+
+        # this then becomes the emperical fisher matrix
+
+
+
 
     def train_batch(self, sample_batch):
         input_batch = f.pad(sample_batch['image'].float(), (2, 2, 2, 2))

@@ -41,9 +41,13 @@ def train(args, model, device):
                 name = 'pred_' + str(ind[0])
                 sample_image = sample_batched['image'][0]
                 log_images(name, sample_image, count)
-
-        # # save model
+   
         epoch = epoch + 1
+    # update fisher info after each task
+    fisher_batch = [iter(mnistmTrainLoader).next()['image'] for i in range(5)]
+    fisher_batch = torch.cat(fisher_batch, 0)
+    model.update_fisher(fisher_batch)
+    
 
 def test(args, model, device):
 
