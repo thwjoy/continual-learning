@@ -10,29 +10,7 @@ import math
 from torch_utils import dataset as ds
 from torch_utils import torch_io as tio
 import matplotlib.pyplot as plt
-
-
-class Net(nn.Module):
-
-    def __init__(self):
-        super(Net, self).__init__()
-        # single input channel and 6 output, 5*5 kernel
-        self.conv1 = nn.Conv2d(1, 6, 5)
-        self.conv2 = nn.Conv2d(6, 16, 5)
-        # fully connected layers
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 10)
-        self.pool2d = nn.MaxPool2d(2)
-
-    def forward(self, x):
-        x = self.pool2d(f.relu(self.conv1(x)))
-        x = self.pool2d(f.relu(self.conv2(x)))
-        x = x.view(x.size(0), -1)
-        x = f.relu(self.fc1(x))
-        x = f.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
+import model
 
 
 def train(args):
@@ -43,7 +21,7 @@ def train(args):
 
     print('######### Run Name: %s ##########' %(run_name))
 
-    net = Net()
+    net = model.Net()
 
     mnistmTrainSet = ds.mnistmTrainingDataset(
                         text_file=args.dataset_list)
@@ -105,7 +83,7 @@ def test(args):
     else:
         ckpt = args.ckpt
 
-    net = Net()
+    net = model.Net()
 
     mnistmTestSet = ds.mnistTestingDataset(
                         task_list=args.evaluate_list)
