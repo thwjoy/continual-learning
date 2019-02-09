@@ -6,6 +6,8 @@ import pandas as pd
 import shutil
 import os
 from tensorboard_logger import configure
+import model
+import torch
 
 sys.path.append('./torch_utils')
 
@@ -29,11 +31,14 @@ def main():
                         help='Patch model weights, only required for testing')
     args = parser.parse_args()
 
+
+
     #read the tasks from each list
     tasks_train = pd.read_csv(args.training_list, sep=",", usecols=range(1), header=None)
     tasks_test = pd.read_csv(args.testing_list, sep=",", usecols=range(1), header=None)
 
-        # tensorboard
+
+    # tensorboard
     run_name = "./runs/run-classifier_batch_" + str(args.batch_size) \
                     + "_epochs_" + str(args.epochs) + "_" + args.log_message
 
@@ -42,22 +47,23 @@ def main():
         shutil.rmtree(run_name)
 
     configure(run_name)
+
+    if not args.ckpt:
+        args.ckpt = run_name + '/ckpt'
+
     args.evaluate_list = []
+
+    # net = model.Net()
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    mod = model.Model(model_location=args.ckpt, device=device)
 
     for i, t in tasks_train.iterrows():
         args.dataset_list = t[0]
         args.evaluate_list.append(tasks_test.iloc[i, 0])
         args.task = i
-        network.train(args)
-        network.test(args)
-
-
-    #now train and test them sequentially
-
-    # if args.test:
-    #     network.test(args)
-    # else:
-    #     network.train(args)
+        network.train(args, model=mod, device=device)
+        network.test(args, model=mod, device=device)
 
 if __name__ == '__main__':
     main()

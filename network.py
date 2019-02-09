@@ -10,22 +10,9 @@ import math
 from torch_utils import dataset as ds
 from torch_utils import torch_io as tio
 import matplotlib.pyplot as plt
-import model
 
 
-def train(args):
-
-    # tensorboard
-    run_name = "./runs/run-classifier_batch_" + str(args.batch_size) \
-                    + "_epochs_" + str(args.epochs) + "_" + args.log_message
-
-    print('######### Run Name: %s ##########' %(run_name))
-
-    # net = model.Net()
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-    mod = model.Model(model_location=run_name + '/ckpt', device=device)
-
+def train(args, model, device):
     mnistmTrainSet = ds.mnistmTrainingDataset(
                         text_file=args.dataset_list)
 
@@ -33,42 +20,32 @@ def train(args):
                                             mnistmTrainSet,
                                             batch_size=args.batch_size,
                                             shuffle=True, num_workers=2)
+    # start from scratch each time
+    epoch = 0
 
-    mod.epoch = 0
+    print('######### Running ckpt: %s ##########' %(args.ckpt))
 
-    print('######### Loaded ckpt: %s ##########' %(run_name))
-
-    while mod.epoch < args.epochs:
+    while epoch < args.epochs:
 
         for i, sample_batched in enumerate(mnistmTrainLoader, 0):
             
-            mod.train_batch(sample_batched)
+            model.train_batch(sample_batched)
 
             # print statistics
             if i % 50 == 0:
-                count = int(mod.epoch * math.floor(len(mnistmTrainSet) / (args.batch_size * 200)) + (i / 200))
+                count = int(model.epoch * math.floor(len(mnistmTrainSet) / (args.batch_size * 200)) + (i / 200))
                 print('[%d, %5d] loss: %.3f' %
-                    (mod.epoch + 1, i + 1, mod.loss.item()))
-                log_value('loss', mod.loss.item(), count)
-                _, ind = mod.output.max(1)
+                    (model.epoch + 1, i + 1, model.loss.item()))
+                log_value('loss', model.loss.item(), count)
+                _, ind = model.output.max(1)
                 name = 'pred_' + str(ind[0])
                 sample_image = sample_batched['image'][0]
                 log_images(name, sample_image, count)
 
         # # save model
-        mod.save_model(model_location=run_name + '/ckpt')
-        mod.epoch = mod.epoch + 1
+        epoch = epoch + 1
 
-def test(args):
-
-
-    if not args.ckpt:
-        ckpt = "./runs/run-classifier_batch_" + str(args.batch_size) \
-                    + "_epochs_" + str(args.epochs) + "_" + args.log_message + '/ckpt'
-    else:
-        ckpt = args.ckpt
-
-    net = model.Net()
+def test(args, model, device):
 
     mnistmTestSet = ds.mnistTestingDataset(
                         task_list=args.evaluate_list)
@@ -77,24 +54,11 @@ def test(args):
                                             mnistmTestSet,
                                             batch_size=args.batch_size,
                                             shuffle=True, num_workers=2)
-    # put on gpu if available
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-    net.to(device)
- 
-    # load prev model
-    tio.load_test_model(model=net, path=ckpt)
 
     correct = torch.ByteTensor().to(device)
     
     for i, sample_batched in enumerate(mnistmTestLoader, 0):
-        input_batch = f.pad(sample_batched['image'].float(), (2, 2, 2, 2), mode='constant', value=0)
-        input_batch = input_batch.to(device)
-        labels = sample_batched['labels']
-
-        output = net(input_batch)
-
-        batch_correct = (torch.argmax(output, dim=1) == labels.to(device))
+        batch_correct = model.test_batch(sample_batched)
         correct = torch.cat((correct, batch_correct))
 
     print('Accuracy on ALL tasks %f' %(correct.float().mean().item()))
@@ -111,15 +75,8 @@ def test(args):
     correct = torch.ByteTensor().to(device)
     
     for i, sample_batched in enumerate(mnistmTestLoader, 0):
-        input_batch = f.pad(sample_batched['image'].float(), (2, 2, 2, 2), mode='constant', value=0)
-        input_batch = input_batch.to(device)
-        labels = sample_batched['labels']
-
-        output = net(input_batch)
-
-        batch_correct = (torch.argmax(output, dim=1) == labels.to(device))
+        batch_correct = model.test_batch(sample_batched)
         correct = torch.cat((correct, batch_correct))
-
 
     print('Accuracy on THIS tasks %f' %(correct.float().mean().item()))
         

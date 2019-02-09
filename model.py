@@ -53,6 +53,14 @@ class Model():
         self.loss.backward()
         self.optimizer.step()
 
+    def test_batch(self, sample_batch):
+        input_batch = f.pad(sample_batch['image'].float(), (2, 2, 2, 2), mode='constant', value=0)
+        input_batch = input_batch.to(self.device)
+        labels = sample_batch['labels']
+        output = self.net(input_batch)
+        batch_correct = (torch.argmax(output, dim=1) == labels.to(self.device))
+        return batch_correct
+
 
     def save_model(self, model_location):
         tio.save_model(epoch=self.epoch, model=self.net, optimizer=self.optimizer, path=model_location)
