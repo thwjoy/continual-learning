@@ -43,6 +43,7 @@ class Model():
         tio.load_model(model=self.net, optimizer=self.optimizer, epoch=epoch, path=model_location)
         self.epoch = epoch[0]
         
+    def ewc_regulariser():
 
     def train_batch(self, sample_batch):
         input_batch = f.pad(sample_batch['image'].float(), (2, 2, 2, 2))
