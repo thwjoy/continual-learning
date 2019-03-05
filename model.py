@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as f
 import torch.optim as optim
 from torch_utils import torch_io as tio
+from torch import autograd
 
 
 
@@ -60,23 +61,36 @@ class Model():
         tio.load_model(model=self.net, optimizer=self.optimizer, epoch=epoch, path=model_location)
         self.epoch = epoch[0]
         
-    def update_fisher(self, input_batch):
+    def add_fisher(self, input_batch):
         # we need to sample some examples and then perform softmax over them, 
         # we use this to get the current probability distribution
         input_batch = f.pad(input_batch.float(), (2, 2, 2, 2))
         input_batch = input_batch.to(self.device)
         outputs = self.net(input_batch)
         
-        # then compute the second gradient of the log
+        # get log probabilities
         log_softmax = torch.nn.functional.log_softmax(outputs, 1)
 
         # get gradients wrt parameters
+
+        print(log_softmax)
+
+        log_grads = autograd.grad(log_softmax[0], self.net.parameters(), retain_graph=True)
+
+        print(log_grads)
+        # self.fisher = torch.(log_grads, log_grads)
+
+
         
-
-
         # this then becomes the emperical fisher matrix
 
+    # def ewc_loss(self, params):
+    #     """
+    #     The regulariser for EWC
+    #     """
+    #     # get the sum of previous fisher matrices from prev task, then just do weighted least squares
 
+    #     return
 
 
     def train_batch(self, sample_batch):

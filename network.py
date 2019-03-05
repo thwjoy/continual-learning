@@ -27,9 +27,14 @@ def train(args, model, device):
 
     while epoch < args.epochs:
 
+        fisher_batch = []
+
         for i, sample_batched in enumerate(mnistmTrainLoader, 0):
             
             model.train_batch(sample_batched)
+
+            # append some random images to this batch
+            fisher_batch.append(sample_batched['image'][0])
 
             # print statistics
             if i % 50 == 0:
@@ -41,7 +46,8 @@ def train(args, model, device):
                 name = 'pred_' + str(ind[0])
                 sample_image = sample_batched['image'][0]
                 log_images(name, sample_image, count)
-   
+
+        model.add_fisher(torch.stack(fisher_batch))
         epoch = epoch + 1
     # update fisher info after each task
     fisher_batch = [iter(mnistmTrainLoader).next()['image'] for i in range(5)]
